@@ -1,0 +1,49 @@
+﻿@{
+    ViewBag.Title = "About";
+}
+
+<!doctype html>
+<html lang="en">
+
+<head>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/openlayers/openlayers.github.io@master/en/v6.6.1/css/ol.css"
+          type="text/css">
+    <style>
+        .map {
+            height: 600px;
+            width: 100px;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/gh/openlayers/openlayers.github.io@master/en/v6.6.1/build/ol.js"></script>
+
+    <title>OpenLayers example</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jspanel3/3.11.0/jquery.jspanel.css" />
+    @*// or the minified css*@
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jspanel3/3.11.0/jquery.jspanel.min.css" />
+
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jspanel3/3.11.0/jquery.jspanel-compiled.js"></script>
+    @*// or the minified js*@
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jspanel3/3.11.0/jquery.jspanel-compiled.min.js"></script>
+</head>
+
+<body>
+    <h2>Harita Uygulaması</h2>
+    <div id="map" class="map"></div>
+    <script type="text/javascript">
+    var map = new ol.Map({
+      target: 'map',
+      layers: [
+        new ol.layer.Tile({
+          source: new ol.source.OSM()
+        })
+      ],
+      view: new ol.View({
+        center: ol.proj.fromLonLat([35.9744, 39.0128]),
+        zoom: 6
+      })
+    });
+    </script>
+</body>
+
+</html>
+

@@ -1,0 +1,446 @@
+﻿@{
+    ViewBag.Title = "Index";
+}
+
+
+<!doctype html>
+<html lang="en">
+
+<head>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/openlayers/openlayers.github.io@master/en/v6.6.1/css/ol.css"
+          type="text/css">
+    <style>
+        .map {
+            height: 600px;
+            width: 100%;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/gh/openlayers/openlayers.github.io@master/en/v6.6.1/build/ol.js"></script>
+
+    <title>Harita Uygulaması</title>
+    <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js" type="text/javascript"></script>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jspanel3/3.11.0/jquery.jspanel.css" />
+    @*// or the minified css*@
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jspanel3/3.11.0/jquery.jspanel.min.css" />
+
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jspanel3/3.11.0/jquery.jspanel-compiled.js"></script>
+    @*// or the minified js*@
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jspanel3/3.11.0/jquery.jspanel-compiled.min.js"></script>
+
+</head>
+<body>
+    <div>
+        <h1>Harita Uygulaması </h1>
+        <div class="navbar-collapse collapse">
+        <ul class="nav navbar-nav">
+
+            <li><a href="javascript:ActiveKapi();">Kapı Ekle</a></li>
+            <li><a href="javascript:ActiveDaire();">Mahalle Ekle</a></li>
+            <li><a href="javascript:ActiveBilgi();">Bilgi Al </a></li>
+    
+    @*tıklanınca gidip ActiveKapi(9 fonksiyonunu çalıştır demiş olduk.*@
+            
+        </ul>
+    </div>
+    </div>
+    <div id="map" class="map" style="position:center;"></div>
+</body>
+
+</html>
+<script type="text/javascript">
+    //haritaya point ekleme ve kaydetme 
+    //h ttps://www.elifselendumanogullari.com/openlayers-ile-haritaya-point-ekleme-ve-kaydetme/
+    var raster = new ol.layer.Tile({
+        source: new ol.source.OSM()
+    });
+
+    var source = new ol.source.Vector({ wrapX: false });
+
+    var vector = new ol.layer.Vector({
+        source: source
+    });
+
+    var kapi_layer = new ol.layer.Vector({
+        source: new ol.source.Vector()
+
+    });
+    var mahalle_layer = new ol.layer.Vector({
+        source: new ol.source.Vector()
+    });
+    var map = new ol.Map({
+        layers: [raster, vector, kapi_layer],
+        target: 'map',
+        view: new ol.View({
+            center: [28.96, 41.03],
+            zoom: 4,
+            projection: "EPSG:4326"
+
+        })
+
+    });
+    var kapi;
+    function addKapiInteraction() {
+        kapi = new ol.interaction.Draw({
+            source: source,
+            type: 'Point'
+        });
+
+        map.addInteraction(kapi);
+        kapi.setActive(false);
+
+    }
+
+    function ActiveKapi() {
+        kapi.setActive(true);
+    }
+
+    addKapiInteraction();
+ 
+    kapi.on('drawend', function (e) {
+        
+        //point atıldıktan sonra yapılacak işler bu scope de yer almalı
+        var currentFeature = e.feature;
+
+        var _coords = currentFeature.getGeometry().getCoordinates();
+        kapi.setActive(false);
+        //$.jsPanel({
+        //    selector: "#container-1",
+        //    position: "center",
+        //    theme: "success",
+        //    title: "Another jsPanel"
+        //});
+        $.jsPanel({
+            id: "kapi_ekle_panel",
+            theme: 'success',
+            headerTitle: 'kapı ekle',
+            position: 'center-top 0 58',
+            contentSize: '300 250',
+            content: 'No: <input id="kapi_no" type="text"/><br><br><br><button style="height:40px;width:60px" id="kapi_kaydet" class="btn btn-success">Ekle</button>',
+            callback: function () {
+                //this.content.style.padding = '20px';
+            }
+        });
+        document.getElementById('kapi_kaydet').onclick = function () {
+
+            var _no = $('#kapi_no').val();
+
+            if (_no.length < 1) {
+
+                alert("Kapı Numarası Girmediniz");
+
+                return;
+            }
+            //kapının kordinatlarını x ve y değişkenlerine attım
+            var _data = {
+                x: _coords[0].toString().replace('.', ','),
+                y: _coords[1].toString().replace('.', ','),
+                no: _no
+            };
+
+            $.ajax({
+                type: "POST",
+                url: "/Home/SavePoint",
+                dataType: 'json',
+                data: _data,
+                success: function (message) {
+                    alert("Başarıyla Eklendi");
+
+                    kapi.setActive(false);
+                },
+
+                error: function () {
+                    alert("Hata Oluştu");
+                },
+                onbeforeclose: function () {
+                    return onbeforeclose();
+                },
+            });
+        };
+    })
+    ////////////////////////////////////////////////////////////////////////////////////////
+    //Mahalle Çizimi  
+    //h ttps://www.elifselendumanogullari.com/haritaya-polygonmahalle-ekleme/
+
+    var kapi;
+    function addKapiInteraction() {
+        kapi = new ol.interaction.Draw({
+            source: source,
+            type: 'Point'
+        });
+
+        map.addInteraction(kapi);
+        kapi.setActive(false);
+
+    }
+    var mahalle_ciz;
+    function addDaireInteraction() {
+        mahalle_ciz = new ol.interaction.Draw({
+            source: mahalle_source,
+            type: 'Polygon'
+        });
+
+        map.addInteraction(mahalle_ciz);
+        mahalle_ciz.setActive(false);
+
+    }
+
+    function ActiveDaire() {
+        mahalle_ciz.setActive(true);
+    }
+
+    addDaireInteraction();
+
+    mahalle_ciz.on('drawend', function (e) {
+        jsPanel.create({
+            id: "mahalle_ekle_panel",
+            theme: 'success',
+            headerTitle: 'Mahalle Eklendi',
+            position: 'center-top 0 58',
+            contentSize: '200 200',
+            content: 'Mahalle Çizim İşlemi Başarılı',
+            callback: function () {
+                this.content.style.padding = '20px';
+            }
+        });
+
+        mahalle_ciz.setActive(false);
+
+    });
+    
+    ///////////////////////////////////////////////// 
+    //function ActivePanel() {
+   //  jsPanel({
+    //   theme: 'warning',
+    //   headerTitle: 'İlk Panel',
+    //   position: 'center-top 0 58',
+    //  contentSize: '450 250',
+    // content: '<p>öRNEK Panelimiz Başarıyla Oluştu</p>',
+    //  callback: function () {
+    //  this.content.style.padding = '20px';
+    //  },
+     //  onbeforeclose: function () {
+     //    return confirm('Paneli Kapatmak İstediğinizden Emin Misiniz?');
+     //}
+    // });
+
+    /////////////////////////////////////////////////////////////////////////////////
+    //Kayıtlı Noktaları Haritaya Basma
+    // h ttps://www.elifselendumanogullari.com/openlayers-ile-kayitli-noktalari-haritaya-basma/
+ 
+    function ListAllPoints() {
+
+        $.ajax({
+            type: "GET",
+            url: "/Home/List",
+            dataType: 'json',
+            success: function (response) {
+
+                var _features = [];
+
+                for (var i = 0; i < response.length; i++) {
+
+                    //her bir pointin x,y koordinatlarını aldım.
+
+                    var _point = response[i];
+                    var _id = _point.Id
+                    var _geo = new ol.geom.Point([_point.x, _point.y]);
+
+                    var featurething = new ol.Feature({
+                        name: "Kapı",
+                        geometry: _geo,
+
+                    });
+
+                    featurething.setId(_id)
+
+                    //feature oluşutup buna noktaları atadım ve style verdim
+
+                    var _style = new ol.style.Style({
+                        image: new ol.style.Circle({
+                            fill: new ol.style.Fill({
+                                color: 'rgba(0,0,255,0.3)'
+                            }),
+                            stroke: new ol.style.Stroke({
+                                color: '#8000ff'
+                            }),
+                            radius: 10
+                        }),
+                    });
+
+                    featurething.setStyle(_style);
+
+                    _features.push(featurething);
+                }
+                //oluşturduğum style ı feature a set ettım ve featuring nesnemi de  boş olan _features listesine attım.
+                //layer ve source olayını daha önce vurgulamıstım yazdıgım ve elde ettıgım feature harita kaynağına (source) atılmazsa 
+                //dataları map üstünde göremeyiz
+
+                var _pointSource = kapi_layer.getSource();
+
+                _pointSource.addFeatures(_features);
+            },
+
+            error: function () {
+                alert("upsss");
+            },
+
+        });
+    };
+
+    ///////////////////////////////////////////////////////////////////////
+    //Harita yer alan point Hakkında Bilgi Alma
+    //h ttps://www.elifselendumanogullari.com/haritada-yer-alan-point-hakkinda-bilgi-alma/
+    var bilgi;
+
+    function addBilgiInteraction() {
+
+        //seçili işleme göre yeni bir geometrik çizi  oluşturuyor.
+        //Biz point seçtireceğimiz için type ı ona göre verdik.
+
+        bilgi = new ol.interaction.Draw({
+            source: source,
+            type: 'Point'
+        });
+
+        map.addInteraction(bilgi);
+
+        bilgi.setActive(false);
+        //point seçildikten hemen sonra mouse ucunda gelen seçim tool u kapattık
+
+    }
+    function ActiveBilgi() {
+        bilgi.setActive(true);
+    }
+
+
+    addBilgiInteraction();
+    bilgi.on('drawend', function (e) {
+        map.on("click", function (event) {
+
+            bilgi.setActive(false);
+
+            map.forEachFeatureAtPixel(event.pixel, function (feature, layer) {
+                //feature dan seçilen pointin bilgilerini yakalayıp db ye method üzerinden gönderelim
+                //tip ve id ye feature dan gelen bilgiyi atadım
+                var tip = feature.get('name')
+                var id = feature.getId()
+                seciliId = id
+                seciliTip = tip
+                var seciliId;
+                var seciliTip;
+
+                if (seciliId) {
+                    $.ajax({
+                        url: '/Home/BilgiVer',
+                        type: 'POST',
+                        dataType: 'json',
+                        data: {
+                            tip: seciliTip,
+                            id: seciliId,
+                        },
+                        success: function (resp) {
+                            var content;
+
+                            if (seciliTip == 'Kapı') {
+                                content = 'Kapı Numarası: <input id="yeni_no" type="text"  value=" ' + resp.bilgi.KapiNo + '"/>';
+                                //value kısmına dönen bilgi set edildi.
+                            }
+                            jsPanel.create({
+                                id: "bilgi_ver",
+                                theme: 'success',
+                                headerTitle: 'Bölge Bilgileri',
+                                position: 'center-top 0 58',
+                                contentSize: '300 250',
+                                content: content,
+                                callback: function () {
+                                    //id ve tip sıfırlansın.
+                                    //yenisini seçersem diye 
+                                    seciliTip = "";
+                                    seciliId = 0;
+                                    this.content.style.padding = '20px';
+                                },
+                            });
+
+                        }
+                    })
+                }
+            });
+        });
+    })
+
+    //////////////////////////////////////////////////////////////////////////////////
+    // h ttps://www.elifselendumanogullari.com/haritada-kayitli-polygonlari-mahalle-basma/
+    //kayıtlı poligonları mahalle basma
+            
+    function ListAllPolygons() {
+        $.ajax({
+            type: "GET",
+            url: "/Home/MahalleListele",
+            dataType: 'json',
+            success: function (response) {
+
+                var _features = [];
+                var _coordList = [];
+                var _idList = [];
+
+                for (var j = 0; j < response.length; j++) {
+                    var _coords = [];
+                    var _data = response[j];
+                    var _id = _data.Id;
+                    var _koorSpt = _data.Kordinatlar.split('*');
+                    //buraya ad da gelecek suan sadece koordinat alıyor.
+                    for (var i = 0; i < _koorSpt.length; i++) {
+
+                        var _mahalle = _koorSpt[i];
+                        var _sp = _mahalle.split(',');
+                        _coords.push([_sp[0], _sp[1]]);
+                    }
+
+                    _coordList.push(_coords);
+                    //artık id de alıyor
+                    _idList.push(_id);
+                }
+                var _style = new ol.style.Style({
+                    image: new ol.style.Circle({ // add this
+                        stroke: new ol.style.Stroke({
+                            color: '#FFA500'
+                        }),
+                        radius: 5
+                    }),
+                });
+                // db den cızılmıs  olan her nesneyı gostermemı saglıyor
+                for (var i = 0; i < _coordList.length; i++) {
+
+                    var feature = new ol.Feature({
+                        name: "Mahalle",
+                        geometry: new ol.geom.Polygon([_coordList[i]])
+                    });
+                    //FEATURİNG DEGISKENINDE SADECE COORDLIST VAR AMA ID YOK
+                    var _featureID = _idList[i]
+                    feature.setId(_featureID);
+                    feature.set("adi", "123");
+                    //feature e set ile id atadım
+
+                    //feature.setStyle(_style);
+                    _features.push(feature);
+                }
+                var _mahalleSource = mahalle_layer.getSource();
+
+                _mahalleSource.addFeatures(_features);
+
+                //mahalle.setActive(false);
+            },
+
+            error: function () {
+                alert("upsss");
+            },
+
+        });
+    }
+
+            
+</script>
+
+
+
